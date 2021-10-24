@@ -20,7 +20,7 @@ object_by_time={}
 
 #method: 0 for vg, 1 for robust.
 class VG:
-    def __init__(self, nodes, names,dist_file_name, max_neighbors,  minDist, upp_bound=500,  time=0, initPher=1, ratio=1, method=0):
+    def __init__(self, nodes, names,dist_file_name, max_neighbors,  minDist, maxDist=500, upp_bound=500,  time=0, initPher=1, ratio=1, method=0):
         self.nodes=nodes
         self.time=int(time)
         self.names=names
@@ -51,7 +51,10 @@ class VG:
             G.add_node(names[i])
         #add location as pos:
         for i in range(len(nodes)):
-            pos[names[i]]=(nodes[i][1],nodes[i][2])
+            if(nodes[i][1])>180:
+                pos[names[i]] = (nodes[i][1]-360, nodes[i][2])
+            else:
+                pos[names[i]]=(nodes[i][1],nodes[i][2])
         #add altitude as alt
         for i in range(len(nodes)):
             alt[names[i]] = nodes[i][3]
@@ -66,8 +69,8 @@ class VG:
             index[names[i]] = i
 
 
-        print(names)
-        print(G.nodes)
+        #print(names)
+        #print(G.nodes)
         nx.set_node_attributes(G, index, 'index')
         nx.set_node_attributes(G, name, 'name')
         nx.set_node_attributes(G, pos, 'pos')
@@ -78,13 +81,14 @@ class VG:
 
         #self.robust_list=get_area_from_distances_file(dist_file_name, tresh=minDist)
         self.distances=distance_functions.get_distance_from_distances_file(dist_file_name, time)
-        #print(self.distances['24_26'])
+        print(self.distances)
+#        print(self.distances['24_61'])
         #print(self.distances)
         #print(len(self.distances.values ()), "distances")
         #print(len(self.robust_list.values()), "robust_list")
         #print(self.robust_list)
         #basicly - add the edges according the vg mindist factor
-        #self.compute_edges_robust()
+        #self.compute_vg()
 
         #print('567_624', self.dists)
         if method==1:
@@ -100,7 +104,6 @@ class VG:
 
         #assign phermodne level to each edge
         #self.init_phermones()
-
 
     def draw_graph(self, ant=False, edgeList=[], draw=False, name="stam"):
         plt.figure(figsize=(16, 8))
@@ -177,13 +180,10 @@ class VG:
         d=math.fabs(d)
         return d/ratio
 
-
     def ang_distance(self, node1, node2, ratio=1):
         p1 = self.vg.nodes[node1]['pos']
         p2 = self.vg.nodes[node2]['pos']
         return self.ang_distance4(p1[0], p2[0], p1[1], p2[1], ratio)
-
-
 
     def distance(self, node1, node2, ratio=1):
         p1=self.vg.nodes[node1]['pos']
@@ -309,25 +309,25 @@ class VG:
 
         # self.vg.remove_nodes_from(iso)
 
-
     def  compute_vg(self, ratio=1, func=0):  # 0 for regular distance and 1 for ang_distance
         min=0
         max=1
-
         for i in self.vg.nodes:
             for j in self.vg.nodes:
-                if(self.vg.nodes[i]["index"]<  self.vg.nodes[j]["index"]):
+                if(self.vg.nodes[i]["index"]<  self.vg.nodes[j]["index"]):# and  'str(i)+"_"+str(j)' in self.distances.keys()):
                     if(func==0):
                         #d= self.distance(i,j, ratio)
                         #print(i, j)
                         d=self.distances[str(i)+"_"+str(j)]
+
                         if (len(edges_by_time)>0):
                           #  diff_c = d - edges_by_time[self.time - 1][i][j]['weight']
                             diff_c=0
                             #if(d>minDist/ratio):
                                 #self.vg.add_edge(i, j, weight=math.inf, ph=self.initPher, update=0, diff=math.inf)
                                 #min = self.vg[i][j]['weight']
-                            if(d<=self.minDist/ratio):
+                            if(float(d)<=self.minDist/ratio and float(d)>5000):
+                                #print(" d", d, " ",self.minDist/ratio)
                                 self.vg.add_edge(i,j,weight=d, ph=0, update=0, diff=diff_c)
                                 max = self.vg[i][j]['weight']
                                 min = self.vg[i][j]['weight']
@@ -335,7 +335,7 @@ class VG:
                            # if (d > minDist / ratio):
                                # self.vg.add_edge(i, j, weight=math.inf, ph=self.initPher, update=0, diff=math.inf)
                                #min = self.vg[i][j]['weight']
-                            if (d <= self.minDist / ratio):
+                            if (d <= self.minDist / ratio and float(d)>5000):
                                 self.vg.add_edge(i, j, weight=d, ph=0, update=0, diff=0)
                                 max = self.vg[i][j]['weight']
                                 min = self.vg[i][j]['weight']
@@ -359,8 +359,6 @@ class VG:
                                 self.vg.add_edge(i, j, weight=d, ph=self.initPher, update=0, diff=d)
                                 max = self.vg[i][j]['weight']
             #remove isolated nodes- the graph must be connected
-
-
 
         for w in self.vg.edges.data('weight'):
             w=w[2]
@@ -388,7 +386,8 @@ class VG:
                 m=self.min_cost
                 #print(e)
                 c=e[2]['weight']
-                e[2]['ph']=(M-c)+(M-m)/3
+                #e[2]['ph']=(M-c)+(M-m)/3
+                e[2]['ph'] = 0
                 #e[2]['ph']=1/c
                 e[2]['update']=0
                 #print(e[2]['weight'],e[2]['ph'] )
@@ -396,9 +395,6 @@ class VG:
         #     for e in self.vg.edges(data=True):
         #         e[2]['ph'] =old.vg.edges[e[0], e[1]]['ph']
         #         e[2]['update'] = 0
-
-
-
 
     def   init_ants(self, old=None, numOfAnts=0):
         self.ants={}
@@ -418,8 +414,32 @@ class VG:
                 self.ants[r]=e[0]
 
 
-
     def move(self, ant_num,node):
+        #print("ant", node)
+        n=self.vg.neighbors(node)
+        # for i in n:
+        #  print(i, type(i))
+        #if len(list(n))>0:
+        edgesCose={}
+        for i in n:
+                edgesCose[i]=(self.vg[node][i]['weight'])
+        edgesCose = {k: v for k, v in sorted(edgesCose.items(), key=lambda item: item[1], reverse=True)}
+        #edgesCose=collections.OrderedDict(sorted(edgesCose.items()))
+
+
+                #choose the next neighbor
+        if(len(edgesCose)<1):
+                    #print(edgesCose, "empty")
+                print(" empty")
+        else:
+            k=self.wheel(edgesCose)
+            e_cost=self.vg[node][k]['weight']
+            self.vg[node][k]['update']=self.vg[node][k]['update']+1/e_cost
+            self.ants[ant_num]=k
+
+
+
+    def old_move(self, ant_num,node):
         #print("ant", node)
         n=self.vg.neighbors(node)
         # for i in n:
@@ -487,13 +507,27 @@ class VG:
         for k,v in self.ants.items():
             self.vg.nodes[v]['visited']='no'
 
-    def update_edge_phermone(self,P, number_of_updates, IP ,nue):
+    def update_edge_phermone(self,P, IP ,nue=0.01):
+        #P=cuurent phermones, IP= new calculation
+        new_p=(1-nue)*P+nue*IP
+        # if(new_p!=P):
+        #     print("new", new_p, "old", P)
+        return new_p
+
+    def old_update_edge_phermone(self,P, number_of_updates, IP ,nue):
         new_p=(1-nue)*(P)+number_of_updates*IP
         # if(new_p!=P):
         #     print("new", new_p, "old", P)
         return new_p
 
     def update_phermones(self, nue=0.5):
+
+        for e in self.vg.edges(data=True):
+                IP=e[2]['update']
+                u=self.update_edge_phermone(e[2]['ph'], IP, nue)
+                e[2]['ph'] =u
+
+    def old_update_phermones(self, nue=0.5):
         self.maxP=1000*((self.max_cost-self.min_cost)+(self.max_cost-self.min_cost)/3)
         #self.maxP = 1000 * ((self.max_cost - self.min_cost) + (self.max_cost - self.min_cost) / 3)
 
@@ -505,13 +539,13 @@ class VG:
                 IP=(self.max_cost-e[2]['weight'])+(self.max_cost-self.min_cost)/3
                 u=self.update_edge_phermone(e[2]['ph'], e[2]['update'], IP, nue)
                 #print(e[2]['update'])
-                if u>self.maxP:
-                    e[2]['ph']=self.maxP-IP
-                else:
-                    if u<self.minP:
-                        e[2]['ph']=self.minP+IP
-                    else:
-                        e[2]['ph'] =u
+             #   if u>self.maxP:
+              #      e[2]['ph']=self.maxP-IP
+               # else:
+                #    if u<self.minP:
+                 #       e[2]['ph']=self.minP+IP
+                  #  else:
+                e[2]['ph'] =u
 
     def print_phermones_level(self):
 
@@ -539,7 +573,6 @@ class VG:
         for i in list(edges):
                 costs[(i[0], i[1])] = i[2]['ph']
 
-
         srt_phermones = {k: v for k, v in sorted(costs.items(), key=lambda item: item[1],reverse=True)}
 
         # costs = collections.OrderedDict(sorted(costs.items()))
@@ -547,6 +580,7 @@ class VG:
 
 
         T = nx.Graph()
+        #print(srt_phermones.items())
         for k,v in srt_phermones.items():
             # print(k[0])
             if not T.has_node(k[0]):
@@ -554,8 +588,7 @@ class VG:
             if not T.has_node(k[1]):
                 T.add_node(k[1], pos=self.vg.nodes[k[1]]['pos'])
             if (k[1] not in nx.algorithms.components.node_connected_component(T, k[0])):
-                if (len(list(T.neighbors(k[0]))) < self.max_neighbors and len(
-                        list(T.neighbors(k[1]))) < self.max_neighbors):
+                if (len(list(T.neighbors(k[0]))) < self.max_neighbors and len(list(T.neighbors(k[1]))) < self.max_neighbors):
                     T.add_edge(k[0], k[1], weight=self.vg[k[0]][k[1]]['weight'], ph=self.vg[k[0]][k[1]]['ph'])
         if (nx.algorithms.components.is_connected(T)):
             print("connected")
@@ -604,7 +637,15 @@ class VG:
             print("connected")
         return T
 
-    def phermon_enjancement(self, T, enahncmentFactor=1.5):
+    def phermon_enjancement(self, enahncmentFactor):
+        for e in self.vg.edges.data('ph'):
+            curr=self.vg[e[0]][e[1]]['ph']
+            orig = 1/self.vg[e[0]][e[1]]['weight']
+
+            self.vg[e[0]][e[1]]['ph'] =curr*enahncmentFactor+(1-enahncmentFactor)*orig
+
+
+    def old_phermon_enjancement(self, T, enahncmentFactor=1.5):
         for e in T.edges.data('ph'):
             t=enahncmentFactor*T[e[0]][e[1]]['ph']
             IP = (self.max_cost -  T[e[0]][e[1]]['weight']) + (self.max_cost - self.min_cost) / 3
@@ -623,7 +664,8 @@ class VG:
             for e in self.vg.edges(data=True) :
                # print(e)
                # print(prev.vg.edges[e[0],e[1]])
-                e[2]['diff']=e[2]['weight']-prev.vg.edges[e[0],e[1]]['weight']
+               if prev.vg.has_edge(e):
+                    e[2]['diff']=e[2]['weight']-prev.vg.edges[e[0],e[1]]['weight']
                 #e[2]['ph']=prev.vg.edges[e[0],e[1]]['ph']
 
 
@@ -638,17 +680,17 @@ class VG:
 
 
 def cost(G):
-    # cosst=0
-    # for i in G.edges.data('weight'):
-    #     cosst+=i[2]
-    # return cosst
-    sum=0
+    cosst=0
+    for i in G.edges.data('weight'):
+        cosst+=i[2]
+    return cosst
+    #sum=0
     #print("check cost")
-    for n, (dist, path) in nx.all_pairs_dijkstra(G,weight='weight'):
-        for k in dist:
-            sum+=dist[k]
+    # for n, (dist, path) in nx.all_pairs_dijkstra(G,weight='weight'):
+    #     for k in dist:
+    #         sum+=dist[k]
   #  print("sum",sum)
-    return sum
+    return cosst
 
 def draw_G(G,pos , edgeList=[], draw=False, name=""):
     plt.figure(figsize=(16, 8))
@@ -684,7 +726,7 @@ def draw_G(G,pos , edgeList=[], draw=False, name=""):
         # phermones = self.vg.edges.data('weight')
         # #C = collections.OrderedDict(sorted(C.items()))
 
-def CreateVGFromFile(node_f_name, names_f_name, disances_f_name ,method, md, num_of_sats=600 ,max_neighbors=3, time=0 , initPher=1, ratio=1):
+def CreateVGFromFile(node_f_name, names_f_name, disances_f_name ,method, md, num_of_sats=600 ,max_neighbors=4, time=0 , initPher=1, ratio=1):
     file1 = open(node_f_name, 'rb')
     nodes = pickle.load(file1)
     file1.close()
@@ -697,13 +739,13 @@ def CreateVGFromFile(node_f_name, names_f_name, disances_f_name ,method, md, num
     for i in range(len(nodes)):
         nodes[i] = nodes[i][:num_of_sats]
         names[i] = names[i][:num_of_sats]
-        G= VG(nodes[i], names[i], disances_f_name,minDist=md, max_neighbors=3, time=i, initPher=initPher, ratio=ratio, method=method)
+        G= VG(nodes[i], names[i], disances_f_name,minDist=md, max_neighbors=4, time=i, initPher=initPher, ratio=ratio, method=method)
         gList.append(G)
         print("graph: ", i, " created", len(names[i]), "nodes")
 
     #create a list of graphs in file
     if method==0:
-        file_out = open(node_f_name+"_vg_graphs", 'ab')
+        file_out = open(node_f_name+"_vg_graphs_"+str(num_of_sats), 'ab')
         pickle.dump(gList, file_out)
         file_out.close()
         print("file created",node_f_name+"_vg_graphs")

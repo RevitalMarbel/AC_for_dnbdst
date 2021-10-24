@@ -180,7 +180,7 @@ for q in range(0,r):
 
     print(nodes)
     print(sat_name)
-    G=visibilityGraph_for_AC.VG(nodes, sat_name,dist_file_name="distances_5_2" ,time= q,minDist=T_thresh, ratio=ratio)
+    G=visibilityGraph_for_AC.VG(nodes, sat_name,dist_file_name="distances_5_1" ,time= q,minDist=T_thresh, ratio=ratio, max_neighbors=3)
 
     #nx.write_gpickle(G, str(num_of_sat)+" "+str(jumps)+"_"+str(q))
 

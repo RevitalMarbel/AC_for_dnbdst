@@ -85,6 +85,7 @@ def  get_area_from_distances_file(file_name, tresh):
 
 #return a disctionary with the distances in time (time)
 def  get_distance_from_distances_file(file_name, time):
+    #print(file_name)
     dbfile = open(file_name, 'rb')
     dist = pickle.load(dbfile)
     res={}
@@ -93,7 +94,7 @@ def  get_distance_from_distances_file(file_name, time):
         if(time<len(dist[key])  ):
             area=dist[key][time]
            # print (area, "area")
-            res[key]=area
+            res[key]=int(area)
             #print(key)
 
         else:
